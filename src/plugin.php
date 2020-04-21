@@ -78,6 +78,17 @@ class Sendy_Action_After_Submit extends \ElementorPro\Modules\Forms\Classes\Acti
 			return;
 		}
 
+		// Prepare custom fields for request
+		$custom_fields = array();
+		foreach (  $settings['sendy_custom_field_list'] as $field_item ) {
+			$field_name = $field_item['sendy_custom_field_name'];
+			$field_id = $field_item['sendy_custom_field_id'];
+			if ($field_name && $field_id) {
+				$field_value = $fields[$field_id];
+				$custom_fields[$field_name] = $field_value;
+			}
+		}
+
 		// If we got this far we can start building our request data
 		// Based on the param list at https://sendy.co/api
 		$sendy_data = [
@@ -88,6 +99,13 @@ class Sendy_Action_After_Submit extends \ElementorPro\Modules\Forms\Classes\Acti
 			'ipaddress' => \ElementorPro\Core\Utils::get_client_ip(),
 			'referrer' => isset( $_POST['referrer'] ) ? $_POST['referrer'] : '',
 		];
+
+		// Add custom fields to request data
+		if (!empty($custom_fields)) {
+			foreach ($custom_fields as $key => $value) {
+				$sendy_data[$key] = $value;
+			}
+		}
 
 		// add name if field is mapped
 		if ( empty( $fields[ $settings['sendy_name_field'] ] ) ) {
@@ -165,6 +183,45 @@ class Sendy_Action_After_Submit extends \ElementorPro\Modules\Forms\Classes\Acti
 				'type' => \Elementor\Controls_Manager::TEXT,
 			]
 		);
+		$widget->add_control(
+			'sendy_custom_field_label',
+			[
+				'label' => __( 'Custom Fields', 'text-domain' ),
+				'type' => \Elementor\Controls_Manager::RAW_HTML,
+				'raw' => __( '', 'text-domain' ),
+				'separator' => 'before'
+			]
+		);
+
+		$repeater = new \Elementor\Repeater();
+
+		$repeater->add_control(
+			'sendy_custom_field_id',
+			[
+				'label' => __( 'Elementor Form Field ID', 'text-domain' ),
+				'label_block' => true,
+				'type' => \Elementor\Controls_Manager::TEXT,
+			]
+		);
+
+		$repeater->add_control(
+			'sendy_custom_field_name',
+			[
+				'label' => __( 'Sendy Field Name', 'text-domain' ),
+				'type' => \Elementor\Controls_Manager::TEXT,
+				'label_block' => true,
+				'description' => 'You can find this on the Custom Fields page of your list.',
+			]
+		);
+
+		$widget->add_control(
+			'sendy_custom_field_list',
+			array(
+				'type'    => Elementor\Controls_Manager::REPEATER,
+				'fields'  => array_values( $repeater->get_controls() ),
+				'title_field' => '{{{ sendy_custom_field_id }}}',
+			)
+		);
 
 		$widget->end_controls_section();
 
@@ -183,7 +240,10 @@ class Sendy_Action_After_Submit extends \ElementorPro\Modules\Forms\Classes\Acti
 			$element['sendy_list'],
 			$element['sendy_name_field'],
 			$element['sendy_email_field'],
-			$element['sendy_api_field']
+			$element['sendy_api_field'],
+			$element['sendy_custom_field_id'],
+			$element['sendy_custom_field_name'],
+			$element['sendy_custom_field_list']
 		);
 	}
 }
